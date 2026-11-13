@@ -1,0 +1,74 @@
+﻿<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#060b14">
+<title>FaithfulFrames guide</title>
+<style>
+  :root { --bg:#060b14; --card:#0e1726; --edge:rgba(160,200,240,.14); --txt:#eef4fb; --soft:#a9bccf; --mut:#71849a; --acc:#38e0ff; --good:#49e3a1; }
+  * { box-sizing:border-box; }
+  html, body { margin:0; background:var(--bg); color:var(--txt); font:16px/1.5 -apple-system, "Segoe UI", Roboto, Inter, sans-serif; }
+  body { padding:max(18px, env(safe-area-inset-top)) 16px 40px; }
+  .wrap { max-width:640px; margin:0 auto; }
+  .brand { display:flex; align-items:center; gap:10px; color:var(--soft); font-weight:600; font-size:14px; letter-spacing:.02em; }
+  .brand b { color:var(--acc); }
+  h1 { font-size:26px; line-height:1.2; margin:18px 0 10px; }
+  .intro { color:var(--soft); font-size:15px; margin:0 0 18px; }
+  .progress { height:6px; border-radius:6px; background:rgba(255,255,255,.08); overflow:hidden; margin:0 0 18px; }
+  .progress i { display:block; height:100%; width:0; background:linear-gradient(90deg,#9ff1ff,var(--acc)); transition:width .25s; }
+  ol { list-style:none; padding:0; margin:0; counter-reset:step; }
+  li { counter-increment:step; display:flex; gap:14px; align-items:flex-start; background:var(--card); border:1px solid var(--edge); border-radius:16px; padding:16px; margin:0 0 12px; cursor:pointer; -webkit-tap-highlight-color:transparent; }
+  li::before { content:counter(step); flex:0 0 32px; height:32px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:700; background:rgba(56,224,255,.14); color:var(--acc); }
+  li.done { opacity:.55; }
+  li.done::before { content:"\2713"; background:rgba(73,227,161,.18); color:var(--good); }
+  li.done span { text-decoration:line-through; }
+  li span { font-size:17px; }
+  .board { color:var(--mut); font-size:13px; margin:16px 0 0; }
+  .tip { color:var(--mut); font-size:13px; margin:14px 0 0; }
+  .empty { color:var(--soft); margin-top:40px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="brand"><span>Faithful<b>Frames</b></span><span>&middot; BIOS guide</span></div>
+  <div id="content"><p class="empty">Loading your steps...</p></div>
+</div>
+<script>
+(async function () {
+  const box = document.getElementById("content");
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  try {
+    const m = location.hash.match(/g=([A-Za-z0-9_-]+)/);
+    if (!m) { box.innerHTML = '<p class="empty">Open this page from the QR code in FaithfulFrames (Hardware &gt; Tuning &gt; Show me how &gt; Show on my phone).</p>'; return; }
+    let b64 = m[1].replace(/-/g, "+").replace(/_/g, "/"); while (b64.length % 4) b64 += "=";
+    const bytes = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+    const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream("deflate-raw"));
+    const g = JSON.parse(await new Response(stream).text());
+    document.title = g.t + " - FaithfulFrames";
+    const key = "ff-guide-" + m[1].slice(0, 40);
+    let done = [];
+    try { done = JSON.parse(localStorage.getItem(key) || "[]"); } catch (e) { done = []; }
+    box.innerHTML = '<h1>' + esc(g.t) + '</h1><p class="intro">' + esc(g.i || "") + '</p><div class="progress"><i id="bar"></i></div><ol id="steps">' +
+      (g.s || []).map((s, i) => '<li data-i="' + i + '" class="' + (done.includes(i) ? "done" : "") + '"><span>' + esc(s) + '</span></li>').join("") + '</ol>' +
+      (g.b ? '<p class="board">Your motherboard: ' + esc(g.b) + '</p>' : '') +
+      '<p class="tip">Tap a step when it\'s done. Nothing on this page is sent anywhere: the steps travel inside the link itself.</p>';
+    const bar = document.getElementById("bar");
+    const total = (g.s || []).length;
+    const update = () => { bar.style.width = (total ? (done.length / total) * 100 : 0) + "%"; };
+    update();
+    document.getElementById("steps").addEventListener("click", e => {
+      const li = e.target.closest("li"); if (!li) return;
+      const i = Number(li.dataset.i);
+      if (done.includes(i)) { done = done.filter(x => x !== i); li.classList.remove("done"); } else { done.push(i); li.classList.add("done"); }
+      try { localStorage.setItem(key, JSON.stringify(done)); } catch (e) { }
+      update();
+    });
+  } catch (e) {
+    box.innerHTML = '<p class="empty">This guide link couldn\'t be read. Make sure your phone\'s browser is up to date, or use Print in FaithfulFrames instead.</p>';
+  }
+})();
+</script>
+</body>
+</html>
